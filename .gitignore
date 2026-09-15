@@ -2,3 +2,32 @@ bank_statement_test.csv
 combined_private_ai_cloud_learning_build_roadmap.pdf
 private_financial_slm_rag_7_day_roadmap(1).md
 private_slm_sensitive_ai_roadmap.pdf
+ROADMAP.md
+CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Model training output (checkpoints, throwaway smoke-test runs)
+smoke_test_output/
+*_output/
+checkpoint-*/

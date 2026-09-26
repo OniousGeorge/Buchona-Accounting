@@ -6,7 +6,6 @@ saved with space for your ideal/expected answers, so we can measure improvement
 after Days 3-5 fine-tuning.
 """
 import db
-from pipeline import run_pipeline
 from datetime import datetime
 from pathlib import Path
 from inference_baseline import query_ollama
@@ -14,9 +13,7 @@ from inference_baseline import query_ollama
 
 def run_baseline_tests():
     """Load transactions and run all 4 test questions as batch queries."""
-    # Load the CSV and fetch transactions
-    run_pipeline("bank_statement_test.csv")
-    all_transactions = db.list_transactions()
+    all_transactions = db.list_all()
 
     # Use only the first 15 transactions for the baseline
     test_transactions = all_transactions[:15]

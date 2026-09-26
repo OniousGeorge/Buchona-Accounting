@@ -1,8 +1,6 @@
 import requests
 import db
 
-from pipeline import run_pipeline
-
 
 def query_ollama(prompt, temperature=1.0):
 
@@ -11,7 +9,7 @@ def query_ollama(prompt, temperature=1.0):
         json={
             "model": "smollm2:1.7b-instruct-q4_0",
             "prompt": prompt,
-            "temperature": temperature,
+            "options": {"temperature": temperature},
             "stream": False,
         },
     )
@@ -19,9 +17,7 @@ def query_ollama(prompt, temperature=1.0):
     return response.json()["response"]
 
 if __name__ == "__main__":
-    # Load transactions from the database
-    run_pipeline("bank_statement_test.csv")
-    transactions = db.list_transactions()
+    transactions = db.list_all()
 
     # Test inference on the first 3 transactions
     for i, txn in enumerate(transactions[:15], 1):

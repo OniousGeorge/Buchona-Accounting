@@ -1,5 +1,6 @@
 import db
 import json
+from prompts import CATEGORY_PARENTS
 
 transactions = db.list_all()
 
@@ -28,63 +29,84 @@ categorize_key_words = {
     "DEPOSIT": "Deposit",
     "APPLE CASH": "Deposit",
     "AMERICAN WATER WORKS": "Water",
-    "PERSON A": "Rent",
+    "JOHN GATTO": "Rent",
     "VENMO": "Misc",
     "CASH APP": "Misc",
     "TJMAXX": "Consumer Spending",
     "EXXONMOBIL": "Gas",
-    "CAPITAL ONE": "Credit Card",
-    "WITHDRAWAL": "Financial",
-    "INTEREST": "Misc",
+    "INTEREST": "Cash Back",
+    "CAPITAL ONE MOBILE PMT": "Credit Card Payment",
+    "CAPITAL ONE MOBILE PYMT": "Credit Card Payment",
+    "GRIL" : "Eating Out",
+    "Netflix" : "Subscription",
+    "PLANET FITNESS": "Subscription",
+    "AMAZON WEB SERVICES": "Subscription",
+    "COMCAST": "Internet",
+    "BURGER KING": "Eating Out",
+    "WAFFLE HOUSE": "Eating Out",
+    "ATERA519": "Eating Out",
+    "SHEETZ": "Eating Out",
+    "CITGO": "Gas",
+    "WAL-MART": "Groceries",
+    "360 PERFORMANCE SAVINGS": "Savings",
 }
 
 # The model only ever predicts the child category; the parent is looked up here.
-CATEGORY_PARENTS = {
-    "Insurance": "Bills",
-    "Rent": "Bills",
-    "Water": "Bills",
-    "Credit Card": "Bills",
-    "Groceries": "Food",
-    "Eating Out": "Food",
-    "Gas": "Transportation",
-    "Consumer Spending": "Shopping",
-    "Deposit": "Income",
-    "Financial": "Financial",
-    "Misc": "Misc",
-}
 
-# Auto-categorize training transactions
-categorized = []
-summary = {}
+
+def categorize(rows):
+    """Keyword-label each (account, description, date, amount) row.
+
+    Returns (categorized, summary): a list of labeled dicts, and a dict of
+    category -> number of rows that got it.
+    """
+    categorized = []
+    summary = {}
+
+    for idx, txn in enumerate(rows, 1):
+        account, description, date, amount = txn
+
+        category = "Uncategorized"
+        for keyword, cat in categorize_key_words.items():
+            if keyword.upper() in description.upper():
+                category = cat
+                break
+
+        categorized.append({
+            "description": description,
+            "amount": amount,
+            "account": account,
+            "date" : date,
+            "category": category
+        })
+
+        summary[category] = summary.get(category, 0) + 1
+        print(f"{idx}. [{category}] {description} - ${amount}")
+
+    return categorized, summary
+
+
+def print_summary(title, summary):
+    print("\n" + "=" * 80)
+    print(f"{title} category summary (parent > child):")
+    for cat in sorted(summary, key=lambda c: (CATEGORY_PARENTS[c], c)):
+        print(f"  {CATEGORY_PARENTS[cat]} > {cat}: {summary[cat]}")
+
 
 print("Auto-categorizing training transactions:\n")
+train_labeled, train_summary = categorize(training)
 
-for idx, txn in enumerate(training, 1):
-    _, _, description, _, txn_type, amount, _ = txn
+print("\nAuto-categorizing eval transactions:\n")
+eval_labeled, eval_summary = categorize(eval_set)
 
-    category = "Uncategorized"
-    for keyword, cat in categorize_key_words.items():
-        if keyword.upper() in description.upper():
-            category = cat
-            break
+# Each split gets its own file so eval labels can never leak into training.
+with open(db.DATA_DIR / "train_labeled.json", "w") as f:
+    json.dump(train_labeled, f, indent=2)
+with open(db.DATA_DIR / "eval_labeled.json", "w") as f:
+    json.dump(eval_labeled, f, indent=2)
 
-    categorized.append({
-        "description": description,
-        "amount": amount,
-        "type": txn_type,
-        "category": category
-    })
+print_summary("Training", train_summary)
+print_summary("Eval", eval_summary)
 
-    summary[category] = summary.get(category, 0) + 1
-    print(f"{idx}. [{category}] {description} - ${amount}")
-
-# Save to file
-with open(db.DATA_DIR / "training_data.json", "w") as f:
-    json.dump(categorized, f, indent=2)
-
-print("\n" + "=" * 80)
-print("Category summary (parent > child):")
-for cat in sorted(summary, key=lambda c: (CATEGORY_PARENTS[c], c)):
-    print(f"  {CATEGORY_PARENTS[cat]} > {cat}: {summary[cat]}")
-
-print(f"\n✓ Saved {len(categorized)} transactions to data/training_data.json")
+print(f"\nSaved {len(train_labeled)} transactions to data/train_labeled.json")
+print(f"Saved {len(eval_labeled)} transactions to data/eval_labeled.json")

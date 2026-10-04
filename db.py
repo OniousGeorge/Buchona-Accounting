@@ -168,6 +168,8 @@ def list_all():
         conn.close()
 
 if __name__ == "__main__":
-    trans=list_credit_transactions()
+    trans=list_all()
     for i, s in enumerate(trans, 1):
         print(f"{i}. {s}")
+
+        

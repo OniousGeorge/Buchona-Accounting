@@ -8,6 +8,21 @@ what to do with that message instead of it being forced to stdout.
 """
 from datetime import datetime
 
+# Dates are stored as ISO text (e.g. 2026-09-06): year first, zero-padded, so
+# sorting the text also sorts by date, across years.
+ISO_DATE = "%Y-%m-%d"
+
+
+def date_error(date):
+    """Return None if date is a zero-padded YYYY-MM-DD string, else an error message."""
+    try:
+        parsed = datetime.strptime(date, ISO_DATE)
+    except ValueError:
+        return f"Date {date!r} is not in YYYY-MM-DD format"
+    if parsed.strftime(ISO_DATE) != date:
+        return f"Date {date!r} is not zero-padded YYYY-MM-DD"
+    return None
+
 
 def debit_normalize(statement):
     """Coerce fields to their expected types, in place.
@@ -18,6 +33,12 @@ def debit_normalize(statement):
         statement["Description"] = str(statement["Description"])
     if type(statement.get("Date")) != str:
         statement["Date"] = str(statement["Date"])
+
+    # The checking CSV uses MM/DD/YY; store ISO YYYY-MM-DD so text sorts by date.
+    try:
+        statement["Date"] = datetime.strptime(statement["Date"], "%m/%d/%y").strftime(ISO_DATE)
+    except ValueError:
+        return f"Cannot convert Date {statement['Date']!r} from MM/DD/YY"
 
     try:
         if type(statement.get("Amount")) != float:
@@ -45,11 +66,11 @@ def credit_normalize(statement):
     if type(statement.get("Category")) != str:
         statement["Category"] = str(statement["Category"])
 
-    # The card CSV uses YYYY-MM-DD; convert to MM/DD/YY so both tables match.
+    # The card CSV is already YYYY-MM-DD; re-format it so it is zero-padded.
     try:
-        statement["Date"] = datetime.strptime(statement["Date"], "%Y-%m-%d").strftime("%m/%d/%y")
+        statement["Date"] = datetime.strptime(statement["Date"], ISO_DATE).strftime(ISO_DATE)
     except ValueError:
-        return f"Cannot convert Date {statement['Date']!r} from YYYY-MM-DD"
+        return f"Cannot read Date {statement['Date']!r} as YYYY-MM-DD"
 
     try:
         if type(statement.get("Amount")) != float:
@@ -67,10 +88,9 @@ def debit_validate(statement):
     """
     if type(statement["Description"]) != str:
         return "Description is not a string"
-    try:
-        datetime.strptime(statement["Date"], "%m/%d/%y")
-    except ValueError:
-        return f"Date {statement['Date']!r} is not in MM/DD/YY format"
+    error = date_error(statement["Date"])
+    if error is not None:
+        return error
     if type(statement["Amount"]) != float:
         return "Amount is not a float"
     if type(statement["Balance"]) != float:
@@ -87,10 +107,9 @@ def credit_validate(statement):
         return "Description is not a string"
     if type(statement["Category"]) != str:
         return "Category is not a string"
-    try:
-        datetime.strptime(statement["Date"], "%m/%d/%y")
-    except ValueError:
-        return f"Date {statement['Date']!r} is not in MM/DD/YY format"
+    error = date_error(statement["Date"])
+    if error is not None:
+        return error
     if type(statement["Amount"]) != float:
         return "Amount is not a float"
     return None

@@ -4,10 +4,11 @@ from datasets import Dataset
 import db
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 MODEL_NAME= "HuggingFaceTB/SmolLM2-1.7B-Instruct"
 
-def load_split(filename):
-    with open(db.DATA_DIR / filename) as f:
+def load_split(path):
+    with open(path) as f:
         labeled=json.load(f)
     return Dataset.from_list([training_example(item) for item in labeled])
 
@@ -15,8 +16,9 @@ if __name__ == "__main__":
 
     tokenizer= AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    train_dataset = load_split("train_labeled.json")
-    eval_dataset = load_split("eval_labeled.json")
+    train_dataset = load_split(db.TRAIN_DATASET_PATH)
+    eval_dataset = load_split(db.EVAL_DATASET_PATH)
+    print(f"train: {len(train_dataset)}  eval: {len(eval_dataset)}")
 
     example=train_dataset[0]
 
@@ -37,3 +39,10 @@ if __name__ == "__main__":
     print(f"model memory: {model.get_memory_footprint() / 1e9:.2f} GB")
     print("="*80)
     print(f"GPU memory in use: {torch.cuda.memory_allocated()/ 1e9:.2f} GB")
+
+    model= prepare_model_for_kbit_training(model)
+
+    lora_config= LoraConfig(r=8, lora_alpha=16, target_modules=["q_proj", "k_proj", "v_proj", "o_proj"], lora_dropout=0.05, task_type="CAUSAL_LM")
+
+    model= get_peft_model(model, lora_config)
+    model.print_trainable_parameters()

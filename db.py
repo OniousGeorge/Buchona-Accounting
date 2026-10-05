@@ -11,6 +11,10 @@ from pathlib import Path
 DATA_DIR = Path(__file__).parent / "data"
 DB_PATH = DATA_DIR / "bank_statements.db"
 
+# Labeled splits: written by build_training_dataset.py, read by finetune.py.
+TRAIN_DATASET_PATH = DATA_DIR / "train_dataset.json"
+EVAL_DATASET_PATH = DATA_DIR / "eval_dataset.json"
+
 DEBIT_SCHEMA = """
 CREATE TABLE IF NOT EXISTS debit_transactions (
     debit_statement_id INTEGER PRIMARY KEY,

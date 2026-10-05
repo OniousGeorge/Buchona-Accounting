@@ -120,8 +120,8 @@ def run_credit_pipeline(csv_path):
     return credit_report
 
 if __name__ == "__main__":
-    debit_report = run_debit_pipeline(db.DATA_DIR / "debit_statements.csv")
-    credit_report = run_credit_pipeline(db.DATA_DIR / "credit_statements.csv")
+    debit_report = run_debit_pipeline(db.DATA_DIR / "more_debit_transactions.csv")
+    credit_report = run_credit_pipeline(db.DATA_DIR / "more_credit_transactions.csv")
     print("Debit Report:\n")
     print_report(debit_report)
     print("=" * 80)

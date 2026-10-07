@@ -5,6 +5,10 @@ import db
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from trl import SFTConfig, SFTTrainer
+
+
+
 MODEL_NAME= "HuggingFaceTB/SmolLM2-1.7B-Instruct"
 
 def load_split(path):
@@ -33,7 +37,7 @@ if __name__ == "__main__":
 
     print("tokens in one example:", len(tokenizer(training_text)["input_ids"]))
 
-    bnb_config = BitsAndBytesConfig( load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.float16)
+    bnb_config = BitsAndBytesConfig( load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16)
     model= AutoModelForCausalLM.from_pretrained(MODEL_NAME, quantization_config=bnb_config, device_map="auto")
 
     print(f"model memory: {model.get_memory_footprint() / 1e9:.2f} GB")
@@ -46,3 +50,29 @@ if __name__ == "__main__":
 
     model= get_peft_model(model, lora_config)
     model.print_trainable_parameters()
+
+    training_args = SFTConfig(
+    output_dir="finetune_output",
+    num_train_epochs=3,
+    per_device_train_batch_size=4,
+    learning_rate=2e-4,
+    warmup_steps=45,
+    max_length=256,
+    bf16=True,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    save_total_limit=2,
+    logging_steps=10,
+    report_to="none",
+    )
+    print(training_args.num_train_epochs, training_args.learning_rate)
+
+    trainer=SFTTrainer(model=model, args=training_args, train_dataset=train_dataset, eval_dataset=eval_dataset, processing_class=tokenizer)
+    trainer.train()
+
+    trainer.save_model("finetune_output/final_adapter")
+    tokenizer.save_pretrained("finetune_output/final_adapter")
+
+    print("Saved adapter to finetune_output/final_adapter")
